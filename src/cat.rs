@@ -15,6 +15,7 @@ pub struct Cat {
     state: CatState,
     speed: f64,
     timer: SystemTime,
+    wait_secs: u64,
     sprite: AnimatedSprite
 }
 
@@ -25,12 +26,13 @@ impl Cat {
             state: CatState::Idle,
             speed: 0.25,
             timer: SystemTime::now(),
+            wait_secs: 20,
             sprite: AnimatedSprite::from_window(window, "sprites/idle_right.png", 1, 1, true)
         }
     }
 
     pub fn choose_movement(&mut self, window: &mut Window) {
-        if self.timer.elapsed().unwrap().as_secs() > 20 {
+        if self.timer.elapsed().unwrap().as_secs() > self.wait_secs {
             self.timer = SystemTime::now();
             let n = thread_rng().gen_range(1..=3);
 
@@ -39,7 +41,6 @@ impl Cat {
                     self.change_to_idle(window);
                 },
                 2 => {
-                    self.speed *= -1.0;
                     self.change_direction(window);
                 },
                 3 => {
@@ -79,18 +80,27 @@ impl Cat {
     }
 
     fn change_direction(&mut self, window: &mut Window) {
-        self.state = CatState::Walking;
-        self.speed *= -1.0;
+        self.wait_secs = 20;
 
-        if self.speed.signum() == -1.0 {
-            self.sprite = AnimatedSprite::from_window(window, "sprites/walk_left.png", 3, 4, true);
-        } else {
-            self.sprite = AnimatedSprite::from_window(window, "sprites/walk_right.png", 3, 4, true);
+        if thread_rng().gen_bool(0.2) {
+            self.speed *= -1.0;
+            self.state = CatState::Idle;
+        }
+
+        if !matches!(self.state, CatState::Walking) {
+            self.state = CatState::Walking;
+            
+            if self.speed.signum() == -1.0 {
+                self.sprite = AnimatedSprite::from_window(window, "sprites/walk_left.png", 3, 4, true);
+            } else {
+                self.sprite = AnimatedSprite::from_window(window, "sprites/walk_right.png", 3, 4, true);
+            }
         }
     }
 
     fn change_to_idle(&mut self, window: &mut Window) {
         self.state = CatState::Idle;
+        self.wait_secs = 5;
 
         if self.speed.signum() == -1.0 {
             self.sprite = AnimatedSprite::from_window(window, "sprites/idle_left.png", 1, 1, true);
@@ -100,6 +110,8 @@ impl Cat {
     }
 
     fn change_to_sleep(&mut self, window: &mut Window) {
+        self.wait_secs = 15;
+
         if !matches!(self.state, CatState::Sleeping) {
             self.state = CatState::Sleeping;
             self.sprite = AnimatedSprite::from_window(window, "sprites/sleep.png", 3, 9, false);
